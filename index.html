@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Train Scheduler</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">  
+  <script src="https://www.gstatic.com/firebasejs/5.5.0/firebase.js"></script>
+  <link rel="stylesheet" type="text/css" media="screen" href="assets/css/style.css" />
+</head>
+<body>
+  
+  <h1>Train Scheduler</h1>
+  
+  <div class="display-trains">
+    <h3>Current Train Schedule</h3>
+    <div class="row">
+      <div class="col">Train Name</div>
+      <div class="col">Destination</div>
+      <div class="col">Frequency (min)</div>
+      <div class="col">Next Arrival</div>
+      <div class="col">Minutes Away</div>
+    </div> 
+  </div>   
+  
+  <form>
+    <h3>Add Train</h3>
+    <div class="form-group">
+      <label for="trainname-input">Train Name</label>
+      <input type="text" class="form-control" id="trainname-input">
+    </div>
+    <div class="form-group">
+      <label for="destination-input">Destination</label>
+      <input type="text" class="form-control" id="destination-input">
+    </div>
+    <div class="form-group">
+      <label for="firsttriantime-input">First Train Time</label>
+      <input type="time" class="form-control" id="firsttraintime-input">
+    </div>
+    <div class="form-group">
+      <label for="frequency-input">Frequency (min)</label>
+      <input type="number" class="form-control" id="frequency-input">
+    </div>
+    <button id="add-train" type="submit">Submit</button>
+    <button id="reset" type="reset">Reset</button>
+  </form>
+  
+  
+  <script>
+    // Initialize Firebase
+    var config = {
+      apiKey: "AIzaSyAgH9_wcP1C6PBrUU6CSvM6SFn55RR_apE",
+      authDomain: "train-scheduler-278ef.firebaseapp.com",
+      databaseURL: "https://train-scheduler-278ef.firebaseio.com",
+      projectId: "train-scheduler-278ef",
+      storageBucket: "train-scheduler-278ef.appspot.com",
+      messagingSenderId: "599989443869"
+    };
+    firebase.initializeApp(config);
+  </script>
+  
+  <script src="https://cdn.jsdelivr.net/momentjs/2.12.0/moment.min.js"></script>
+  <script src="https://code.jquery.com/jquery.js"></script>
+  
+  <script>
+    var database = firebase.database();
+    
+    var trainname = "";
+    var destination= "";
+    var firsttraintime = "";
+    var frequency = 0;
+    
+    $("#add-train").on("click", function(event) {
+      event.preventDefault();
+      
+      
+      trainname = $("#trainname-input").val().trim();
+      destination = $("#destination-input").val().trim();
+      firsttraintime = $("#firsttraintime-input").val().trim();
+      frequency = $("#frequency-input").val().trim();
+      
+      // Set values in Firebase
+      database.ref("trains/" + trainname).set({
+        trainname: trainname,
+        destination: destination,
+        firsttraintime: firsttraintime,
+        frequency: frequency
+      });
+      
+    });  
+    // Firebase watcher 
+    database.ref("trains/" + trainname).on("value", function(snapshot) {
+      // Log what snapshot is producing 
+      console.log(snapshot.val().trainname);
+      console.log(snapshot.val().destination);
+      console.log(snapshot.val().firsttraintime);
+      console.log(snapshot.val().frequency);
+
+      $(".display-trains").html(`
+      <h3>Current Train Schedule</h3>
+      <div class="row">
+        <div class="col">Train Name</div>
+        <div class="col">Destination</div>
+        <div class="col">Frequency (min)</div>
+        <div class="col">Next Arrival</div>
+        <div class="col">Minutes Away</div>
+      </div> 
+      `)
+
+      for (var train in snapshot.val()) {
+        $(".display-trains").append(`
+          <div class="row">
+            <div class="col">${snapshot.val()[train].trainname}</div>
+            <div class="col">${snapshot.val()[train].destination}</div>
+            <div class="col">${snapshot.val()[train].frequency}</div>
+            <div class="col">${moment().add(parseInt(snapshot.val()[train].frequency) - (moment().diff(moment(snapshot.val()[train].firsttraintime, "HH:mm"), "minutes") % parseInt(snapshot.val()[train].frequency)), "minutes").format('HH:mm')}</div>
+            <div class="col">${parseInt(snapshot.val()[train].frequency) - (moment().diff(moment(snapshot.val()[train].firsttraintime, "HH:mm"), "minutes") % parseInt(snapshot.val()[train].frequency))}</div>
+          </div> 
+        `)
+      }
+      
+      // Update HTML
+      $("#trainname-display").text(snapshot.val().trainname);
+      $("#destination-display").text(snapshot.val().destination);
+      $("#firsttraintime-display").text(snapshot.val().firsttraintime);
+      $("#frequency-display").text(snapshot.val().frequency);
+      
+      // Deal with errors
+    }, function(errorObject) {
+      console.log("Errors handled: " + errorObject.code);
+    });
+    </script>
+
+</body>
+</html>
